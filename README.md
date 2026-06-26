@@ -111,8 +111,29 @@ unreachable the API still works (cache operations are skipped gracefully).
 | GET/PATCH | `/api/profile/` | authenticated |
 | CRUD | `/api/users/`, `/api/users/{id}/toggle-active/`, `/api/users/stats/` | superuser (some staff) |
 | GET/DELETE | `/api/cache/keys/`, POST `/api/cache/clear/` | superuser |
+| GET/PATCH/DELETE | `/api/auth/passkeys/` | authenticated (own passkeys only) |
+| POST | `/api/auth/passkeys/register/options/` · `register/verify/` | authenticated |
+| POST | `/api/auth/passkeys/login/options/` · `login/verify/` | public |
 
 Full schema at `/api/docs/`.
+
+### Passkeys (WebAuthn)
+
+Users can register one or more passkeys (from the **Profile** page in the
+admin UI) as a passwordless login method, alongside the regular
+username/password login:
+
+1. `register/options/` returns a signed, short-lived challenge (no
+   server-side session/cache needed between steps).
+2. The browser's WebAuthn API (`navigator.credentials.create()`) produces an
+   attestation, which `register/verify/` checks before saving the credential.
+3. Logging in works the same way without a username — `login/options/` issues
+   a discoverable-credential challenge, the OS passkey picker shows every
+   passkey registered for this site, and `login/verify/` looks up the chosen
+   credential's owner and issues the same JWT pair as password login.
+
+`WEBAUTHN_RP_ID` must match the bare domain the frontend is served from (not
+the API's domain) — see `.env.template`.
 
 ### Managing links with an API key
 

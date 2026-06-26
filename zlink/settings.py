@@ -181,6 +181,18 @@ CORS_ALLOWED_ORIGINS = _domains_to_origins(FRONTEND_URL) or [
 ]
 CORS_ALLOW_CREDENTIALS = False
 
+# WebAuthn (passkeys). The "Relying Party" ID is the bare domain the SPA is
+# served from (passkeys are scoped to the page's effective domain, not the
+# API's domain). Defaults to the first FRONTEND_URL entry; override directly
+# if that heuristic doesn't fit a deployment (e.g. RP ID needs to be a parent
+# domain shared across subdomains).
+_first_frontend_domain = next(
+    (d.strip().rstrip('/').split('://')[-1] for d in FRONTEND_URL.split(',') if d.strip()), ''
+)
+WEBAUTHN_RP_ID = os.getenv('WEBAUTHN_RP_ID', '') or _first_frontend_domain or 'localhost'
+WEBAUTHN_RP_NAME = 'ZLink'
+WEBAUTHN_ORIGINS = CORS_ALLOWED_ORIGINS
+
 # drf-spectacular (OpenAPI schema)
 SPECTACULAR_SETTINGS = {
     'TITLE': 'ZLink API',

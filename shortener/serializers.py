@@ -2,7 +2,7 @@ from django.contrib.auth.models import User
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
-from .models import ApiKey, Link
+from .models import ApiKey, Link, Passkey
 from .services import update_link as service_update_link
 from .utils import normalize_short_code, validate_short_code
 
@@ -254,3 +254,16 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         data = super().validate(attrs)
         data['user'] = UserSerializer(self.user).data
         return data
+
+
+class PasskeySerializer(serializers.ModelSerializer):
+    """Passkey management. Never exposes credential_id/public_key.
+
+    `aaguid` identifies the authenticator model (e.g. Google Password Manager,
+    iCloud Keychain) — the frontend maps it to a friendly name/icon.
+    """
+
+    class Meta:
+        model = Passkey
+        fields = ('id', 'name', 'aaguid', 'created_at', 'last_used_at')
+        read_only_fields = ('id', 'aaguid', 'created_at', 'last_used_at')

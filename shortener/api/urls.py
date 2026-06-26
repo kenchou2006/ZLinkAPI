@@ -7,6 +7,13 @@ from .apikeys import ApiKeyViewSet
 from .auth import LoginView, LogoutView, MeView
 from .cache import CacheClearView, CacheKeysView
 from .links import LinkViewSet
+from .passkeys import (
+    PasskeyLoginOptionsView,
+    PasskeyLoginVerifyView,
+    PasskeyRegisterOptionsView,
+    PasskeyRegisterVerifyView,
+    PasskeyViewSet,
+)
 from .profile import ProfileView
 from .users import UserViewSet
 from .views import HealthzView
@@ -15,6 +22,7 @@ router = DefaultRouter()
 router.register('links', LinkViewSet, basename='link')
 router.register('users', UserViewSet, basename='user')
 router.register('api-keys', ApiKeyViewSet, basename='apikey')
+router.register('auth/passkeys', PasskeyViewSet, basename='passkey')
 
 urlpatterns = [
     path('', include(router.urls)),
@@ -32,6 +40,10 @@ urlpatterns = [
     path('auth/refresh/', TokenRefreshView.as_view(), name='api_token_refresh'),
     path('auth/logout/', LogoutView.as_view(), name='api_logout'),
     path('auth/me/', MeView.as_view(), name='api_me'),
+    path('auth/passkeys/register/options/', PasskeyRegisterOptionsView.as_view(), name='api_passkey_register_options'),
+    path('auth/passkeys/register/verify/', PasskeyRegisterVerifyView.as_view(), name='api_passkey_register_verify'),
+    path('auth/passkeys/login/options/', PasskeyLoginOptionsView.as_view(), name='api_passkey_login_options'),
+    path('auth/passkeys/login/verify/', PasskeyLoginVerifyView.as_view(), name='api_passkey_login_verify'),
 
     # OpenAPI schema / docs
     path('schema/', SpectacularAPIView.as_view(), name='api_schema'),

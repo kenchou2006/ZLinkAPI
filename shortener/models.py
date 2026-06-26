@@ -73,3 +73,22 @@ class ApiKey(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.prefix}…)"
+
+
+class Passkey(models.Model):
+    """A WebAuthn credential (passkey) registered by a user as a login method."""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='passkeys')
+    name = models.CharField(max_length=100, blank=True)
+    credential_id = models.CharField(max_length=255, unique=True, db_index=True)
+    public_key = models.TextField()
+    sign_count = models.BigIntegerField(default=0)
+    transports = models.JSONField(default=list, blank=True)
+    # Identifies the authenticator model (e.g. Google Password Manager, iCloud
+    # Keychain) so the UI can show where a passkey lives. Blank when the
+    # authenticator reports an all-zero/unrecognized AAGUID.
+    aaguid = models.CharField(max_length=36, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_used_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.user.username}'s passkey ({self.name or self.credential_id[:8]})"
