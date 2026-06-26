@@ -200,3 +200,13 @@ class PasskeyViewSet(
 
     def get_queryset(self):
         return Passkey.objects.filter(user=self.request.user).order_by('-created_at')
+
+    def perform_destroy(self, instance):
+        user = instance.user
+        super().perform_destroy(instance)
+        # Removing the last passkey while password login is disabled would
+        # lock the user out entirely — re-enable it as a safety net.
+        profile = getattr(user, 'profile', None)
+        if profile and profile.password_login_disabled and not user.passkeys.exists():
+            profile.password_login_disabled = False
+            profile.save(update_fields=['password_login_disabled'])

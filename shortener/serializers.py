@@ -11,19 +11,24 @@ class UserSerializer(serializers.ModelSerializer):
     """Read-only representation of the authenticated user."""
 
     avatar_url = serializers.SerializerMethodField()
+    password_login_disabled = serializers.SerializerMethodField()
 
     class Meta:
         model = User
         fields = (
             'id', 'username', 'email',
             'is_staff', 'is_superuser', 'is_active',
-            'date_joined', 'avatar_url',
+            'date_joined', 'avatar_url', 'password_login_disabled',
         )
         read_only_fields = fields
 
     def get_avatar_url(self, obj) -> str | None:
         profile = getattr(obj, 'profile', None)
         return profile.avatar_url if profile else None
+
+    def get_password_login_disabled(self, obj) -> bool:
+        profile = getattr(obj, 'profile', None)
+        return bool(profile and profile.password_login_disabled)
 
 
 class LinkSerializer(serializers.ModelSerializer):
@@ -180,6 +185,7 @@ class ProfileSerializer(serializers.Serializer):
     username = serializers.CharField(max_length=150, required=False)
     email = serializers.EmailField(required=False, allow_blank=True)
     avatar_url = serializers.URLField(required=False, allow_blank=True)
+    password_login_disabled = serializers.BooleanField(required=False)
     current_password = serializers.CharField(write_only=True, required=False, allow_blank=True,
                                              style={'input_type': 'password'})
     new_password = serializers.CharField(write_only=True, required=False, allow_blank=True,
@@ -214,6 +220,10 @@ class ProfileSerializer(serializers.Serializer):
                 raise serializers.ValidationError({'current_password': "Current password is required to change password."})
             if not user.check_password(current):
                 raise serializers.ValidationError({'current_password': "Current password is incorrect."})
+        if attrs.get('password_login_disabled') and not user.passkeys.exists():
+            raise serializers.ValidationError({
+                'password_login_disabled': "Add a passkey before disabling password login.",
+            })
         return attrs
 
     def save(self):
@@ -223,12 +233,15 @@ class ProfileSerializer(serializers.Serializer):
             user.username = data['username']
         if 'email' in data:
             user.email = data['email']
-        if 'avatar_url' in data:
+        if 'avatar_url' in data or 'password_login_disabled' in data:
             profile = getattr(user, 'profile', None)
             if profile is None:
                 from .models import Profile
                 profile = Profile.objects.create(user=user)
-            profile.avatar_url = data['avatar_url']
+            if 'avatar_url' in data:
+                profile.avatar_url = data['avatar_url']
+            if 'password_login_disabled' in data:
+                profile.password_login_disabled = data['password_login_disabled']
             profile.save()
         password_changed = False
         if data.get('new_password'):
@@ -252,6 +265,11 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 
     def validate(self, attrs):
         data = super().validate(attrs)
+        profile = getattr(self.user, 'profile', None)
+        if profile and profile.password_login_disabled:
+            raise serializers.ValidationError(
+                'Password login is disabled for this account. Sign in with a passkey instead.'
+            )
         data['user'] = UserSerializer(self.user).data
         return data
 

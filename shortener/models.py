@@ -35,6 +35,9 @@ class Link(models.Model):
 class Profile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     avatar_url = models.URLField(max_length=500, blank=True, null=True)
+    # Only allowed while the user has at least one passkey (enforced in
+    # ProfileSerializer) — otherwise they could lock themselves out.
+    password_login_disabled = models.BooleanField(default=False)
 
     def __str__(self):
         return f"{self.user.username}'s profile"
