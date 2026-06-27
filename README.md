@@ -8,8 +8,9 @@ CRUD, user management, API keys for external automation, and cache control.
 It exposes a pure JSON API (no server-rendered pages) documented with OpenAPI.
 
 > The actual click **redirects** are served by a separate, lightweight Go
-> service ([ZLinkClient](../ZLinkClient)) for speed, and the admin UI is a
-> standalone Angular app ([ZLinkFE](../ZLinkFE)). All three share one
+> service ([ZLinkClient](https://github.com/kenchou2006/ZLinkClient)) for
+> speed, and the admin UI is a standalone Angular app
+> ([ZLinkFE](https://github.com/kenchou2006/ZLinkFE)). All three share one
 > PostgreSQL database and one Redis cache.
 
 ## Features
