@@ -11,6 +11,38 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# No cron/worker process is available on this (serverless) deployment, so
+# expired JWT OutstandingToken/BlacklistedToken rows are never cleaned up on
+# a schedule. Piggyback on the thing that grows the table in the first place:
+# every login/refresh issues a new OutstandingToken. Use a cache-backed
+# debounce (not randomness) so cleanup runs at most once per interval no
+# matter how many tokens get issued in between.
+EXPIRED_TOKEN_CLEANUP_INTERVAL_SECONDS = 60 * 60  # at most once per hour
+EXPIRED_TOKEN_CLEANUP_LOCK_KEY = "jwt:expired_token_cleanup_lock"
+
+
+@receiver(post_save, sender="token_blacklist.OutstandingToken")
+def maybe_flush_expired_tokens(sender, created, **kwargs):
+    if not created:
+        return
+    # cache.add only succeeds (and sets the lock) if the key isn't already
+    # present, so this is a no-op for every issuance except the first one
+    # after the lock expires. Token issuance must still succeed even if the
+    # cache backend (Redis) is unreachable, so skip cleanup rather than raise.
+    try:
+        acquired_lock = cache.add(EXPIRED_TOKEN_CLEANUP_LOCK_KEY, True, timeout=EXPIRED_TOKEN_CLEANUP_INTERVAL_SECONDS)
+    except Exception:
+        logger.warning("Cache unavailable, skipping expired token cleanup check")
+        return
+    if not acquired_lock:
+        return
+    from django.core.management import call_command
+
+    try:
+        call_command("flushexpiredtokens")
+    except Exception:
+        logger.warning("flushexpiredtokens failed", exc_info=True)
+
 
 @receiver([post_save, post_delete], sender=Link)
 def clear_link_cache(sender, instance, **kwargs):
